@@ -1,6 +1,18 @@
 {% extends 'base.html' %}
 
-{% block title %}Employees{% endblock %}
+{% block title %}Employees<script>
+document.addEventListener('DOMContentLoaded',function(){
+  const input=document.getElementById('employee-search');
+  if(!input)return;
+  input.addEventListener('input',function(){
+    const q=this.value.toLowerCase().trim();
+    document.querySelectorAll('.employee-row').forEach(row=>{
+      row.style.display=row.dataset.search.toLowerCase().includes(q)?'':'none';
+    });
+  });
+});
+</script>
+{% endblock %}
 
 {% block content %}
 
@@ -167,18 +179,13 @@
 
 <section class="panel fade-in">
 
-    <div class="panel-head">
-
+    <div class="panel-head directory-head">
         <div>
-
+            <span class="section-kicker">PEOPLE DIRECTORY</span>
             <h3>Employee directory</h3>
-
-            <p class="muted">
-                Role-scoped people data.
-            </p>
-
+            <p class="muted">Role-scoped people data, live from your database.</p>
         </div>
-
+        <div class="directory-search"><span>⌕</span><input id="employee-search" placeholder="Search employees..."></div>
     </div>
 
 
@@ -207,7 +214,7 @@
 
             {% for e in employees %}
 
-            <tr>
+            <tr class="employee-row" data-search="{{ e.employee_id }} {{ e.get_full_name }} {{ e.job_title }} {{ e.department|default:'' }} {{ e.manager.get_full_name|default:'' }}">
 
                 <td>
                     {{ e.employee_id }}
@@ -301,4 +308,16 @@
 
 </section>
 
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+  const input=document.getElementById('employee-search');
+  if(!input)return;
+  input.addEventListener('input',function(){
+    const q=this.value.toLowerCase().trim();
+    document.querySelectorAll('.employee-row').forEach(row=>{
+      row.style.display=row.dataset.search.toLowerCase().includes(q)?'':'none';
+    });
+  });
+});
+</script>
 {% endblock %}
