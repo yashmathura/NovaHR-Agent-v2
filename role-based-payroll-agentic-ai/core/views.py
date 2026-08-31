@@ -88,14 +88,79 @@ def employee_create(request):
     u.set_password(password); u.save(); Notification.objects.create(employee=u,title="Welcome to NovaHR",message=f"Your login ID is your email address: {email}. Temporary password: {password}. Please change it after first login.")
     request.session["new_employee_credentials"]={"email":email,"password":password,"employee_id":employee_id,"name":name}
     return redirect("employees")
+@login_required
+def employee_reset_password(request, employee_id):
+    if request.user.role != "ADMIN":
+        return HttpResponseForbidden("Only Admin can reset employee passwords.")
 
+    if request.method != "POST":
+        return redirect("employees")
+
+    employee = get_object_or_404(
+        User,
+        employee_id=employee_id,
+        role="EMPLOYEE",
+        is_active=True
+    )
+
+    password = request.POST.get("password", "").strip()
+
+    if not password:
+        password = _generate_temp_password()
+
+    if len(password) < 8:
+        return HttpResponseForbidden("Password must be at least 8 characters long.")
+
+    employee.set_password(password)
+    employee.must_change_password = True
+    employee.save(update_fields=["password", "must_change_password"])
+
+    Notification.objects.create(
+        employee=employee,
+        title="Password Reset",
+        message=f"Your NovaHR password has been reset. Temporary password: {password}"
+    )
+
+    request.session["reset_credentials"] = {
+        "email": employee.email,
+        "password": password,
+        "employee_id": employee.employee_id,
+        "name": employee.get_full_name() or employee.username,
+    }
+
+    return redirect("employees")
+@login_required
 def employees(request):
-    if request.user.role not in ("ADMIN","HR","MANAGER"): return HttpResponseForbidden("Access denied")
-    qs = User.objects.filter(role="EMPLOYEE").select_related("department","manager")
-    if request.user.role == "MANAGER": qs = qs.filter(department=request.user.department)
+    if request.user.role not in ("ADMIN", "HR", "MANAGER"):
+        return HttpResponseForbidden("Access denied")
+
+    qs = User.objects.filter(
+        role="EMPLOYEE"
+    ).select_related("department", "manager")
+
+    if request.user.role == "MANAGER":
+        qs = qs.filter(department=request.user.department)
+
     from .models import Department
+
     departments = Department.objects.all().order_by("name")
-    return render(request, "employees.html", {"employees": qs, "departments": departments, "new_credentials": request.session.pop("new_employee_credentials", None)})
+
+    return render(
+        request,
+        "employees.html",
+        {
+            "employees": qs,
+            "departments": departments,
+            "new_credentials": request.session.pop(
+                "new_employee_credentials",
+                None
+            ),
+            "reset_credentials": request.session.pop(
+                "reset_credentials",
+                None
+            ),
+        }
+    )
 
 @login_required
 def attendance(request):
